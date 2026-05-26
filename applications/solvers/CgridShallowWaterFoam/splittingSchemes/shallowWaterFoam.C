@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
                   + (1-alpha)*h.prevIter()*magg*fvc::grad(h.oldTime())
                   + alpha*h.prevIter()*magg*fvc::grad(h.prevIter())
                 );
-                huEqn.solve();
+                huEqn.solve(); //to give u_prime
                 
                 surfaceScalarField phi_prime
                 (
@@ -164,33 +164,20 @@ int main(int argc, char *argv[])
                 );
                
                 
-                hU = h.oldTime()*U.oldTime() - dt*((1-alpha)*fvc::div(phi_0,U.oldTime()) + alpha*fvc::div(phi_0,U) + (1-alpha)*h*(Fc^U.oldTime()) + alpha*h*(Fc^U) + (1-alpha)*h.prevIter()*magg*fvc::grad(h.oldTime()) + h.prevIter()*magg*fvc::grad(h0));
+                hU = h.oldTime()*U.oldTime() - dt*((1-alpha)*fvc::div(phi_0,U.oldTime()) + alpha*fvc::div(phi_0,U) + (1-alpha)*h.prevIter()*(Fc^U.oldTime()) + alpha*h.prevIter()*(Fc^U) + (1-alpha)*h.prevIter()*magg*fvc::grad(h.oldTime()) + h.prevIter()*magg*fvc::grad(h0));
                 
-                U = hU/h;
+                U = hU/h.prevIter(); //to give u_prime_prime
                 
                 U_S_old = fvc::flux(U.oldTime());
                 U_S_new = fvc::flux(U);
                 
-                surfaceScalarField phi_1
-                (
-                    fvc::flux(h.oldTime()*U)
-                );
-                
-                surfaceScalarField phi_2
-                (
-                    fvc::flux(h.prevIter()*U.oldTime())
-                );
-                
-                surfaceScalarField phi_3
-                (
-                    fvc::flux(h.prevIter()*U)
-                );
+                phi_prime = fvc::flux(h.prevIter()*U);
                 
                 // Create the pressure equation
                 fvScalarMatrix hEqn
                 (
                     fvm::ddt(h)
-                  + fvc::div(phi_3)
+                  + fvc::div(phi_prime)
                   - fvm::laplacian(sqr(alpha)*dt*magg*hf, h)
                 );
                 hEqn.solve();
@@ -199,7 +186,7 @@ int main(int argc, char *argv[])
                 // Back substitution
                 if (alpha > 0) 
                 {
-                    hU = h*U - dt*magg*h*fvc::grad(alpha*h);
+                    hU = h*U - alpha*dt*magg*h*fvc::grad(h);
                 }
 
                 // Update the velocity field on cell faces

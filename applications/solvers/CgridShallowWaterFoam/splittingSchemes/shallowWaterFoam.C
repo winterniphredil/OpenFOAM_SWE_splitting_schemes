@@ -136,49 +136,48 @@ int main(int argc, char *argv[])
             else if (scheme2) //1.2 with explicit mass advection
             {
                 h.storePrevIter();
+                hf.storePrevIter();
                 U.storePrevIter();
                 
                 // Solve momentum equation on centres without the pressure gradient
-                volVectorField hU = h.prevIter() * U.prevIter();
+                volVectorField hU = h.oldTime() * U.oldTime();
                 surfaceScalarField phi_0
                 (
                     fvc::flux(hU)
+                );
+                surfaceScalarField phi_1
+                (
+                    fvc::flux(h.prevIter() * U.prevIter())
                 );
                               
                 fvVectorMatrix huEqn
                 (
                     fvm::ddt(h,U)
-                  + alpha*fvm::div(phi_0,U)
                   + (1-alpha)*fvc::div(phi_0,U.oldTime())
-                  + alpha*h.prevIter()*(Fc^U)
-                  + (1-alpha)*h.prevIter()*(Fc^U.oldTime())
-                  + h.prevIter()*magg*fvc::grad(h0)
-                  + (1-alpha)*h.prevIter()*magg*fvc::grad(h.oldTime())
-                  + alpha*h.prevIter()*magg*fvc::grad(h.prevIter())
+                  + alpha*fvm::div(phi_1,U)
+                  + (1-alpha)*h.oldTime()*(Fc^U.oldTime())
+                  + alpha*h.prevIter()*(Fc^U.prevIter())
+                  + (1-alpha)*h.oldTime()*magg*fvc::grad(h.oldTime() + h0)
+                  + alpha*h.prevIter()*magg*fvc::grad(h.prevIter() + h0)
                 );
                 huEqn.solve(); //to give u_prime
                 
-                surfaceScalarField phi_prime
-                (
-                    fvc::flux(h.oldTime()*U)
-                );
-               
                 
-                hU = h.oldTime()*U.oldTime() - dt*((1-alpha)*fvc::div(phi_0,U.oldTime()) + alpha*fvc::div(phi_0,U) + (1-alpha)*h.prevIter()*(Fc^U.oldTime()) + alpha*h.prevIter()*(Fc^U) + (1-alpha)*h.prevIter()*magg*fvc::grad(h.oldTime()) + h.prevIter()*magg*fvc::grad(h0));
+                hU = h.oldTime()*U.oldTime() - dt*((1-alpha)*fvc::div(phi_0,U.oldTime()) + alpha*fvc::div(phi_1,U) + (1-alpha)*h.oldTime()*(Fc^U.oldTime()) + alpha*h.prevIter()*(Fc^U.prevIter()) + (1-alpha)*h.oldTime()*magg*fvc::grad(h.oldTime()+h0));
                 
                 U = hU/h.prevIter(); //to give u_prime_prime
                 
-                U_S_old = fvc::flux(U.oldTime());
-                U_S_new = fvc::flux(U);
-                
-                phi_prime = fvc::flux(h.prevIter()*U);
+                surfaceScalarField phi_prime
+                (
+                    fvc::flux(h.prevIter()*U)
+                );
                 
                 // Create the pressure equation
                 fvScalarMatrix hEqn
                 (
                     fvm::ddt(h)
                   + fvc::div(phi_prime)
-                  - fvm::laplacian(sqr(alpha)*dt*magg*hf, h)
+                  - fvm::laplacian(sqr(alpha)*dt*magg*hf.prevIter(), h)
                 );
                 hEqn.solve();
                 hf = fvc::interpolate(h);
@@ -186,11 +185,11 @@ int main(int argc, char *argv[])
                 // Back substitution
                 if (alpha > 0) 
                 {
-                    hU = h*U - alpha*dt*magg*h*fvc::grad(h);
+                    U = U - alpha*dt*magg*fvc::grad(h + h0);
                 }
 
                 // Update the velocity field on cell faces
-                U = hU/h;
+                //U = hU/h;
                 Uf = fvc::interpolate(U);
                 
             }
@@ -207,39 +206,41 @@ int main(int argc, char *argv[])
                 U.storePrevIter();
                 
                 // Solve momentum equation on centres without the pressure gradient
-                volVectorField hU = h.prevIter() * U.prevIter();
+                volVectorField hU = h.oldTime() * U.oldTime();
                 
                 surfaceScalarField phi
                 (
                     fvc::flux(hU)
                 );
+                surfaceScalarField phi_1
+                (
+                    fvc::flux(h.prevIter() * U.prevIter())
+                );
+                            
                               
                 fvVectorMatrix huEqn
                 (
                     fvm::ddt(h,U)
-                  + alpha*fvm::div(phi,U)
                   + (1-alpha)*fvc::div(phi,U.oldTime())
-                  + alpha*h.prevIter()*(Fc^U)
-                  + (1-alpha)*h.prevIter()*(Fc^U.oldTime())
+                  + alpha*fvm::div(phi_1,U)
+                  + (1-alpha)*h.oldTime()*(Fc^U.oldTime())
+                  + alpha*h.prevIter()*(Fc^U.prevIter())
                 );
                 huEqn.solve();
                 
                 U_S_new= fvc::flux(U);
                 
-                surfaceScalarField phi_new
-                (
-                    fvc::flux(h.oldTime()*U)
-                );
                 
                 // Create the pressure equation
                 fvScalarMatrix hEqn
                 (
                     fvm::ddt(h)
-                  + (1-alpha)*fvc::div(phi_new)
+                  + (1-alpha)*fvc::div(phi)
                   + (alpha)*fvm::div(U_S_new, h)
+                  - fvc::laplacian(alpha*(1-alpha)*dt*magg*hf.oldTime(), h.oldTime())
+                  - fvc::laplacian(alpha*(1-alpha)*dt*magg*hf.oldTime(), h0)
                   - fvm::laplacian(sqr(alpha)*dt*magg*hf.prevIter(), h)
-                  - fvc::laplacian((alpha*(1-alpha))*dt*magg*hf.prevIter(), h.oldTime())
-                  - fvc::laplacian(alpha*dt*magg*hf.prevIter(), h0)
+                  - fvc::laplacian(sqr(alpha)*dt*magg*hf.prevIter(), h0)
                 );
                 hEqn.solve();
                 hf = fvc::interpolate(h);
@@ -247,7 +248,7 @@ int main(int argc, char *argv[])
                 // Back substitution
                 if (alpha > 0) 
                 {
-                    hU = h*U - dt*magg*h*fvc::grad((1-alpha)*h.oldTime()+alpha*h+h0);
+                    hU = h*U - (1-alpha)*dt*magg*h.oldTime()*fvc::grad(h.oldTime()+h0) - alpha*dt*magg*h*fvc::grad(h+h0);
                 }
 
                 // Update the velocity field

@@ -91,9 +91,6 @@ int main(int argc, char *argv[])
         Info<< "\n Time = " << runTime.name() << endl;
 
         #include "CourantNo.H"
-        
-        volScalarField h_n = h.oldTime();
-        volVectorField U_n = U.oldTime();
 
         // Outer Iterations
         for (int iIt=0; iIt < nIters; iIt++)
@@ -135,8 +132,6 @@ int main(int argc, char *argv[])
             
             else if (scheme2) //1.2 with explicit mass advection
             {
-                h.storePrevIter();
-                hf.storePrevIter();
                 U.storePrevIter();
                 
                 // Solve momentum equation on centres without the pressure gradient
@@ -147,7 +142,7 @@ int main(int argc, char *argv[])
                 );
                 surfaceScalarField phi_1
                 (
-                    fvc::flux(h.prevIter() * U.prevIter())
+                    fvc::flux(h * U)
                 );
                               
                 fvVectorMatrix huEqn
@@ -156,24 +151,24 @@ int main(int argc, char *argv[])
                   + (1-alpha)*fvc::div(phi_0,U.oldTime())
                   + alpha*fvm::div(phi_1,U)
                   + (1-alpha)*h.oldTime()*(Fc^U.oldTime())
-                  + alpha*h.prevIter()*(Fc^U.prevIter())
+                  + alpha*h*(Fc^U)
                   + (1-alpha)*h.oldTime()*magg*fvc::grad(h.oldTime() + h0)
-                  + alpha*h.prevIter()*magg*fvc::grad(h.prevIter() + h0)
+                  + alpha*h*magg*fvc::grad(h + h0)
                 );
                 huEqn.solve(); //to give u_prime
                 
                 
-                hU = h.oldTime()*U.oldTime() - dt*((1-alpha)*fvc::div(phi_0,U.oldTime())
+                hU = hU - dt*((1-alpha)*fvc::div(phi_0,U.oldTime())
                   + alpha*fvc::div(phi_1,U)
                   + (1-alpha)*h.oldTime()*(Fc^U.oldTime())
-                  + alpha*h.prevIter()*(Fc^U.prevIter())
+                  + alpha*h*(Fc^U.prevIter())
                   + (1-alpha)*h.oldTime()*magg*fvc::grad(h.oldTime() + h0));
                 
-                U = hU/h.prevIter(); //to give u_prime_prime
+                U = hU/h; //to give u_prime_prime
                 
                 surfaceScalarField phi_prime
                 (
-                    fvc::flux(h.prevIter()*U)
+                    fvc::flux(h*U)
                 );
                 
                 // Create the pressure equation
@@ -181,8 +176,8 @@ int main(int argc, char *argv[])
                 (
                     fvm::ddt(h)
                   + fvc::div(phi_prime)
-                  - fvm::laplacian(sqr(alpha)*dt*magg*hf.prevIter(), h)
-                  - fvc::laplacian(sqr(alpha)*dt*magg*hf.prevIter(), h0)
+                  - fvm::laplacian(sqr(alpha)*dt*magg*hf, h)
+                  - fvc::laplacian(sqr(alpha)*dt*magg*hf, h0)
                 );
                 hEqn.solve();
                 hf = fvc::interpolate(h);
@@ -219,7 +214,7 @@ int main(int argc, char *argv[])
                 );
                 surfaceScalarField phi_1
                 (
-                    fvc::flux(h.prevIter() * U.prevIter())
+                    fvc::flux(h * U)
                 );
                             
                               

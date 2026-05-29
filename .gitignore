@@ -154,3 +154,9 @@ debian/atmosfoam
 *.foam
 *.obj
 *.blockMesh
+etc/
+gmtUser/
+scripts/
+src/
+applications/utilities/
+applications/solvers/AdImExShallowWaterFoam/

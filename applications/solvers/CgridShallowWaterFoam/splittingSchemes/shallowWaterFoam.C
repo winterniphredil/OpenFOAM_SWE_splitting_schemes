@@ -163,7 +163,11 @@ int main(int argc, char *argv[])
                 huEqn.solve(); //to give u_prime
                 
                 
-                hU = h.oldTime()*U.oldTime() - dt*((1-alpha)*fvc::div(phi_0,U.oldTime()) + alpha*fvc::div(phi_1,U) + (1-alpha)*h.oldTime()*(Fc^U.oldTime()) + alpha*h.prevIter()*(Fc^U.prevIter()) + (1-alpha)*h.oldTime()*magg*fvc::grad(h.oldTime()+h0));
+                hU = h.oldTime()*U.oldTime() - dt*((1-alpha)*fvc::div(phi_0,U.oldTime())
+                  + alpha*fvc::div(phi_1,U)
+                  + (1-alpha)*h.oldTime()*(Fc^U.oldTime())
+                  + alpha*h.prevIter()*(Fc^U.prevIter())
+                  + (1-alpha)*h.oldTime()*magg*fvc::grad(h.oldTime() + h0));
                 
                 U = hU/h.prevIter(); //to give u_prime_prime
                 
@@ -178,6 +182,7 @@ int main(int argc, char *argv[])
                     fvm::ddt(h)
                   + fvc::div(phi_prime)
                   - fvm::laplacian(sqr(alpha)*dt*magg*hf.prevIter(), h)
+                  - fvc::laplacian(sqr(alpha)*dt*magg*hf.prevIter(), h0)
                 );
                 hEqn.solve();
                 hf = fvc::interpolate(h);

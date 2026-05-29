@@ -1,3 +1,0 @@
-CourantNoU/CourantNoU.C
-
-LIB = $(FOAM_USER_LIBBIN)/libfieldFunctionObjects2

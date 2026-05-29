@@ -1,7 +1,0 @@
-#!/bin/bash -e
-#
-for file in $*
-do
-    nohup evince $file > /dev/null 2>&1 &
-done
-

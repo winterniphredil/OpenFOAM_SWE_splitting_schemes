@@ -1,3 +1,0 @@
-multiScalarRKTransport/multiScalarRKTransport.C
-
-LIB = $(FOAM_USER_LIBBIN)/libsolverFunctionObjects2

@@ -60,7 +60,7 @@ Description
     *(gSum(sumgCoNum)/gSum(mesh.V().primitiveField()))
     *runTime.deltaTValue();
     
-    Info<< "Courant number mean: " << meanCoNum
+    Info<< "Advective Courant number mean: " << meanCoNum
     << " max: " << CoNum << endl;
     
     Info<< "Gravity wave Courant number mean: " << meangCoNum

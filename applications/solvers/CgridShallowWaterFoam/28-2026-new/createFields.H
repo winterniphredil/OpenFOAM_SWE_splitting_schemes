@@ -35,30 +35,12 @@ volVectorField hU
         "hU",
         runTime.name(),
         mesh,
-        IOobject::MUST_READ,
+        IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
     ),
-    mesh
+    h*U,
+    U.boundaryField().types()
 );
-hU = h*U;
-hU.internalFieldRef() = h.internalField() * U.internalField();
-hU.correctBoundaryConditions();
-
-
-Info << "Creating E\n" << endl;
-volScalarField E
-(
-    IOobject
-    (
-        "E",
-        runTime.name(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::AUTO_WRITE
-    ),
-    0.5*(h)*magSqr(U) + 0.5*magg*sqr(h)
-);
-E.write();
 
 // Mass flux through faces
 surfaceScalarField phi
@@ -74,30 +56,24 @@ surfaceScalarField phi
     hf*fvc::flux(U)
 );
 
-
+Info << "Creating E\n" << endl;
+volScalarField E
+(
+    IOobject
+    (
+        "E",
+        runTime.name(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::AUTO_WRITE
+    ),
+    0.5*(h)*magSqr(U) + 0.5*magg*sqr(h)
+);
+Info<< "E write option after construction = "
+    << E.writeOpt()
+    << nl;
 
 Info<< "Creating Coriolis Force" << endl;
 const volVectorField F("F", ((2.0*Omega) & gHat)*gHat);
-//volScalarField f("f", (2.0*Omega) & gHat);
-//f.write();
-
-// Rate of change of momentum, inheriting boundary conditions from U
-volVectorField dhUdt
-(
-    IOobject("dhUdt", runTime.name(), mesh),
-    h*U/dt,
-    U.boundaryField().types()
-);
-dhUdt = -fvc::div(phi,U) - h*(F ^ U) - magg*h*fvc::grad(h+h0),
-dhUdt -= (gHat & dhUdt)*gHat;
-dhUdt.correctBoundaryConditions();
-dhUdt.oldTime();
-
-volVectorField ghGradh = fvc::reconstruct
-(
-    magg*hf*fvc::snGrad(h+h0)*mesh.magSf()
-);
-
-
 
 mesh.schemes().setFluxRequired(h.name());

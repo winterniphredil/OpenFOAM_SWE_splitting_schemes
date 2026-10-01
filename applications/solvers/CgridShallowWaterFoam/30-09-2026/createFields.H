@@ -28,19 +28,6 @@ volVectorField U
     mesh
 );
 
-volVectorField hU
-(
-    IOobject
-    (
-        "hU",
-        runTime.name(),
-        mesh,
-        IOobject::READ_IF_PRESENT,
-        IOobject::AUTO_WRITE
-    ),
-    h*U,
-    U.boundaryField().types()
-);
 
 // Mass flux through faces
 surfaceScalarField phi

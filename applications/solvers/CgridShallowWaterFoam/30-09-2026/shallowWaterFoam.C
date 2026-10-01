@@ -84,11 +84,10 @@ int main(int argc, char *argv[])
         (
             h.oldTime()*U
           - 0.5*dt*fvc::reconstruct(magg*hf*fvc::snGrad(h.oldTime()+h0)*mesh.magSf())
-          + (0.5*dt*fvc::reconstruct(magg*hf*fvc::snGrad(h.oldTime()+h0)*mesh.magSf())&gHat)*gHat
+          + (0.5*dt*fvc::reconstruct(magg*hf*fvc::snGrad(h.oldTime()+h0)*mesh.magSf()) & gHat) * gHat // outer velocity correction
         )/h;
         
         hf = fvc::interpolate(h);
-        
         
         // half Coriolis
         
@@ -114,7 +113,7 @@ int main(int argc, char *argv[])
             (
                 fvm::ddt(h, U) //1/dt * (fvm::Sp(h,U) - h*U.oldTime())
               + 0.25*fvm::div(phi, U)
-              - 0.25*(fvc::div(phi, U) & gHat)*gHat
+              - 0.25*(fvc::div(phi, U) & gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
             phi = fvc::flux(h*U);
@@ -130,9 +129,9 @@ int main(int argc, char *argv[])
             (
                 fvm::ddt(h, U) //1/dt * (fvm::Sp(h,U) - h*U.oldTime())
               + 2/3*fvc::div(phi_a, U_a, "div(phi,U)")
-              - 2/3*(fvc::div(phi_a, U_a, "div(phi,U)")& gHat)*gHat
+              - 2/3*(fvc::div(phi_a, U_a, "div(phi,U)")& gHat)*gHat // outer velocity correction
               + 1/3*fvm::div(phi, U)
-              - 1/3*(fvc::div(phi, U)& gHat)*gHat
+              - 1/3*(fvc::div(phi, U)& gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
             phi = fvc::flux(h*U);
@@ -148,7 +147,6 @@ int main(int argc, char *argv[])
         U.oldTimeRef() = U;
         h.oldTimeRef() = h;
         phi = fvc::flux(h*U);
-        //phi += 1/2*dt*magg*hf*fvc::snGrad(h0)*mesh.magSf(); //play around with pressure gradient
         
         
         // Final gravity (implicit), with non-linear iterations
@@ -171,16 +169,16 @@ int main(int argc, char *argv[])
                 (
                     h.oldTime()*U.oldTime() 
                   + 2 * fvc::reconstruct(hEqn.flux())
-                  - 0.5 * dt*fvc::reconstruct(magg*hf*fvc::snGrad(h0)*mesh.magSf())
-                  - 2 * (fvc::reconstruct(hEqn.flux()) & gHat) * gHat
-                  + 0.5 * dt*(fvc::reconstruct(magg*hf*fvc::snGrad(h0)*mesh.magSf()) & gHat) * gHat
+                  - 0.5 * dt*fvc::reconstruct(magg*hf*fvc::snGrad(h0)*mesh.magSf()) 
+                  - 2 * (fvc::reconstruct(hEqn.flux()) & gHat) * gHat // outer velocity correction
+                  + 0.5 * dt*(fvc::reconstruct(magg*hf*fvc::snGrad(h0)*mesh.magSf()) & gHat) * gHat // outer velocity correction
                 )/h;
             }
         };
         
         phi = fvc::flux(h*U);
         
-        E = 0.5*h*magSqr(U) + 0.5*magg*sqr(h);
+        //E = 0.5*h*magSqr(U) + 0.5*magg*sqr(h);
         runTime.write();
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"

@@ -56,7 +56,6 @@ surfaceScalarField flux
     "fixedValue"
 );
 flux.boundaryFieldRef() == 0;
-flux.write();
 flux.oldTime();
 
 // Rate of change of flux

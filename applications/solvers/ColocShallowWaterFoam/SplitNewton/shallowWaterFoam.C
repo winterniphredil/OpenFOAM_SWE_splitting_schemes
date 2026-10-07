@@ -111,11 +111,14 @@ int main(int argc, char *argv[])
         {
             fvVectorMatrix UEqn
             (
-                fvm::ddt(h, U) //1/dt * (fvm::Sp(h,U) - h*U.oldTime())
-              + 0.25*fvm::div(phi, U)
+                1/dt* (fvm::Sp(h,U_prime) + h*U - h*U.oldTime())  //1/dt * (fvm::Sp(h,U) - h*U.oldTime())
+              + 0.25*fvc::div(phi, U)
+              + 0.5*fvm::div(phi, U_prime)
               - 0.25*(fvc::div(phi, U) & gHat)*gHat // outer velocity correction
+              - 0.5*(fvc::div(phi, U_prime) & gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
+            U += U_prime;
             phi = fvc::flux(h*U);
         };
         
@@ -127,12 +130,15 @@ int main(int argc, char *argv[])
         {
             fvVectorMatrix UEqn
             (
-                fvm::ddt(h, U) //1/dt * (fvm::Sp(h,U) - h*U.oldTime())
+                1/dt* (fvm::Sp(h,U_prime) + h*U - h*U.oldTime()) //1/dt * (fvm::Sp(h,U) - h*U.oldTime())
               + 2./3.* dhUdt_a
-              + 1./3.*fvm::div(phi, U)
+              + 1./3.*fvc::div(phi, U)
+              + 2./3.*fvm::div(phi, U_prime)
               - 1./3.*(fvc::div(phi, U)& gHat)*gHat // outer velocity correction
+              - 2./3.*(fvc::div(phi, U_prime) & gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
+            U += U_prime;
             phi = fvc::flux(h*U);
         };
         
@@ -153,10 +159,9 @@ int main(int argc, char *argv[])
         for(int its = 0; its < num.nItsh; its++)
         {
             hf = fvc::interpolate(h);
-            volScalarField h_prime = h;
             fvScalarMatrix hEqn
             (
-                fvm::Sp(1,h_prime) + h - h.oldTime() //1/dt * (fvm::Sp(1,h) - h.oldTime())
+                1/dt* (fvm::Sp(1,h_prime) + h - h.oldTime()) //1/dt * (fvm::Sp(1,h) - h.oldTime())
               + 0.5*fvc::div(phi)
               + 0.5*fvm::div(linearInterpolate(U) & mesh.Sf(),h_prime,"div(phi,h)")
               - 0.25*fvc::laplacian(dt*magg*hf, h)
@@ -165,7 +170,8 @@ int main(int argc, char *argv[])
               - 0.25*fvc::laplacian(dt*magg*hf, h0)
             );
             hEqn.solve();
-            h = h.oldTime() + h_prime;
+            h += h_prime;
+            //h_prime = 0;
         };
         
         ghGradh = fvc::reconstruct(magg*hf*fvc::snGrad(h+h0)*mesh.magSf());

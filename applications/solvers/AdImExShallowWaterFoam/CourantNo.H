@@ -31,31 +31,24 @@ Description
 \*---------------------------------------------------------------------------*/
 
 {
-    const scalarField sumPhi
+    // Advective Courant number
+    scalarField CoNum
     (
-        fvc::surfaceSum(mag(phi))().primitiveField()
-        /h.primitiveField()
+        0.5*runTime.deltaTValue()/mesh.V().primitiveField()
+       *fvc::surfaceSum(mag(phi))().primitiveField()/h.primitiveField()
     );
     
-    const scalar CoNum =
-    0.5*gMax(sumPhi/mesh.V().primitiveField())*runTime.deltaTValue();
+    scalar CoMean = gSum(CoNum*mesh.V().primitiveField())
+                    /gSum(mesh.V().primitiveField());
     
-    const scalar meanCoNum =
-    0.5
-    *(gSum(sumPhi)/gSum(mesh.V().primitiveField()))
-    *runTime.deltaTValue();
-    
+    Info << "Advective Courant number mean: " << CoMean
+         << " max: " << gMax(CoNum) << endl;
+
     // Gravity wave Courant number
-    surfaceScalarField gwaveCoNum = dt*sqrt(linearInterpolate(magg*h))
-                                    *mesh.deltaCoeffs();
+    CoNum = dt*sqrt(linearInterpolate(magg*h))*mesh.deltaCoeffs();
     
-    const scalar waveCoNum = gMax(gwaveCoNum.primitiveField());
-    
-    Info<< "Courant number mean: " << meanCoNum
-    << " max: " << CoNum << endl;
-    
-    Info<< "Gravity wave Courant number max: " << waveCoNum
-    << endl;
+    Info << "Gravity wave Courant number min: " << gMin(CoNum)
+         << " max: " << gMax(CoNum) << endl;
 }
 
 

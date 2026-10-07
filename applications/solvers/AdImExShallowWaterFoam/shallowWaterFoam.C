@@ -69,6 +69,8 @@ int main(int argc, char *argv[])
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     Info<< "\nStarting time loop\n" << endl;
+    scalar totalE = gSum((0.5*h*magSqr(U) + 0.5*magg*sqr(h))().primitiveField() * mesh.V());
+    Info<< "E = " << totalE << endl;
 
     while (runTime.loop())
     {
@@ -81,50 +83,40 @@ int main(int argc, char *argv[])
         {
             // Create and solve the momentum equation
             // Rate of change of momentum with/without pressure gradient
-            hf = fvc::interpolate(h);
             dhUdt = -h*(F ^ U);
-            if (!num.opSplit)
-            {
-                ghGradh = fvc::reconstruct
-                (
-                    magg*hf*fvc::snGrad(h+h0)*mesh.magSf()
-                );
-                dhUdt -= ghGradh;
-            }
-            
-            // Momentum equation with implicit advection
+            if (!num.opSplit) dhUdt -= ghGradh;
+
+            // Momentum equation with implicit advection, without radial component
             fvVectorMatrix UEqn
             (
                 fvm::ddt(h,U)
               + fvm::div(alpha*phi, U, "div(phi,U)")
              == (1-alpha)*dhUdt.oldTime() + alpha*dhUdt
+              + ((fvc::div(alpha*phi, U,"div(phi,U)")) & gHat)*gHat
             );
             UEqn.solve();
 
             // Update rate of change WITHOUT pressure gradient (to be added
             // after the pressure equation)
-            dhUdt -= fvc::div(phi, U);
+            U -= (U & gHat)*gHat;
+            dhUdt -= fvc::div(phi, U)
+                  - ((fvc::div(phi, U,"div(phi,U)")) & gHat)*gHat;
+            
+            // Remove the pressure gradient, if it was previously included
             if (!num.opSplit) dhUdt += ghGradh;
 
-            // Constrain the momentum to be in the geometry if 3D geometry
-            if (mesh.nGeometricD() == 3)
-            {
-                U -= (gHat & U)*gHat;
-                dhUdt -= (gHat & dhUdt)*gHat;
-                U.correctBoundaryConditions();
-                dhUdt.correctBoundaryConditions();
-            }
-            
-            // Calculate the momentum without the pressure gradient
+            // The momentum without the pressure gradient
             volVectorField hU = h.oldTime() * U.oldTime()
                               + dt*((1-alpha)*dhUdt.oldTime() + alpha*dhUdt);
-            
-            // Convert the momentum into a flux and add mountain gradient
-            phi = fvc::flux(hU) - alpha*dt*magg*hf*fvc::snGrad(h0)*mesh.magSf();
             
             // Construct and solve the pressure equation
             for(int icorr = 0; icorr < num.nPressureCorrs; icorr++)
             {
+                hf = fvc::interpolate(h);
+                // The flux without the pressure gradient
+                phi = fvc::flux(hU)
+                    - alpha*dt*magg*hf*fvc::snGrad(h0)*mesh.magSf();
+
                 // Solve pressure equation
                 for(int orthCorr = 0; orthCorr < num.nNonOrthogCorrs;orthCorr++)
                 {
@@ -136,34 +128,24 @@ int main(int argc, char *argv[])
                       - fvm::laplacian(sqr(alpha)*dt*magg*hf, h)
                     );
                     hEqn.solve();
-
-                    // Back substitutions
-                    if (orthCorr == num.nNonOrthogCorrs-1
-                        && icorr == num.nPressureCorrs-1 && alpha > 0)
-                    {
-                        phi += hEqn.flux()/alpha;
-                        volVectorField hUinc = -fvc::reconstruct
-                        (
-                            magg*hf*fvc::snGrad(h+h0)*mesh.magSf()
-                        );
-                        hU += alpha*dt*hUinc;
-                        dhUdt += hUinc;
-                        dhUdt.correctBoundaryConditions();
-                    }
+                    
+                    bool lastIter = icorr == num.nPressureCorrs-1 
+                            && orthCorr == num.nNonOrthogCorrs-1 && alpha > 0;
+                    if (lastIter) phi += hEqn.flux()/alpha;
                 }
-
-                // Constrain the momentum to be in the geometry if 3D geometry
-                if (mesh.nGeometricD() == 3)
-                {
-                    hU -= (gHat & hU)*gHat;
-                }
-
-                U = hU/h;
-                U.correctBoundaryConditions();
             }
-        }
 
+            // Back substitutions
+            ghGradh = fvc::reconstruct(magg*hf*fvc::snGrad(h+h0)*mesh.magSf());
+            ghGradh -= (ghGradh & gHat)*gHat;
+            U = (hU - alpha*dt*ghGradh)/h;
+        }
+        
+        dhUdt -= ghGradh;
         runTime.write();
+        
+        totalE = gSum((0.5*h*magSqr(U) + 0.5*magg*sqr(h))().primitiveField() * mesh.V());
+        Info<< "E = " << totalE << endl;
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"

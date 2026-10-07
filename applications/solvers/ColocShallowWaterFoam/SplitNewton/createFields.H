@@ -14,6 +14,23 @@ volScalarField h
 );
 surfaceScalarField hf = fvc::interpolate(h);
 
+
+volScalarField h_prime
+(
+    IOobject
+    (
+        "h_prime",
+        runTime.name(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zero", h.dimensions(), 0.0),
+    h.boundaryField().types()
+);
+
+
 Info << "Reading in velocity field U (cell centre velocity)\n" << endl; 
 volVectorField U
 (
@@ -26,6 +43,21 @@ volVectorField U
         IOobject::AUTO_WRITE
     ),
     mesh
+);
+
+volVectorField U_prime
+(
+    IOobject
+    (
+        "U_prime",
+        runTime.name(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedVector("zero", U.dimensions(), vector::zero),
+    U.boundaryField().types()
 );
 
 

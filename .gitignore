@@ -167,3 +167,5 @@ applications/solvers/CgridShallowWaterFoam/current/
 applications/solvers/CgridShallowWaterFoam/new-scheme/
 applications/solvers/CgridShallowWaterFoam/split-new-*/
 applications/solvers/CgridShallowWaterFoam/strang-split*/
+applications/solvers/ColocShallowWaterFoam/current/
+applications/solvers/ColocShallowWaterFoam/Segregated/

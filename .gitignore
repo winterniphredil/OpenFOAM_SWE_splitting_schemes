@@ -160,3 +160,10 @@ scripts/
 src/
 applications/utilities/
 applications/solvers/AdImExShallowWaterFoam/
+
+# Ignore all custom solver variants
+applications/solvers/CgridShallowWaterFoam/28-09-2026-*/
+applications/solvers/CgridShallowWaterFoam/current/
+applications/solvers/CgridShallowWaterFoam/new-scheme/
+applications/solvers/CgridShallowWaterFoam/split-new-*/
+applications/solvers/CgridShallowWaterFoam/strang-split*/

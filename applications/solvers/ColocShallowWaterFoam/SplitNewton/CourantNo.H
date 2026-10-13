@@ -60,12 +60,17 @@ Description
     *(gSum(sumgCoNum)/gSum(mesh.V().primitiveField()))
     *runTime.deltaTValue();
     
+    const scalar maxCoF =
+    gMax(mag(F().primitiveField()))*runTime.deltaTValue();
+    
     Info<< "Advective Courant number mean: " << meanCoNum
     << " max: " << CoNum << endl;
     
     Info<< "Gravity wave Courant number mean: " << meangCoNum
     << " max: " << waveCoNum
     << endl;
+    
+    Info<< "Coriolis Courant number max: " << maxCoF << endl;
     
     //if (waveCoNum > 3 || CoNum > 3)
     //{

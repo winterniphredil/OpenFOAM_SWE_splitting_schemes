@@ -106,39 +106,39 @@ int main(int argc, char *argv[])
         // First store the previous velocity (from after half a Coriolis + gravity)
         U.oldTimeRef() = U;
         
+        Info << "First implicit non-linear advection" << endl;
         // First implicit RK stage
         for(int its = 0; its < num.nItsU1; its++)
         {
             fvVectorMatrix UEqn
             (
-                1/dt* (fvm::Sp(h,U_prime) + h*U - h*U.oldTime())  //1/dt * (fvm::Sp(h,U) - h*U.oldTime())
-              + 0.25*fvc::div(phi, U)
-              + 0.5*fvm::div(phi, U_prime)
+                1/dt* (fvm::Sp(h,U) - h*U.oldTime())
+              - 0.25*fvc::div(phi, U)
+              + 0.5*fvm::div(phi, U)
               - 0.25*(fvc::div(phi, U) & gHat)*gHat // outer velocity correction
-              - 0.5*(fvc::div(phi, U_prime) & gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
-            U += U_prime;
+            //U += U_prime;
             phi = fvc::flux(h*U);
         };
         
         volVectorField dhUdt_a = fvc::div(phi, U, "div(phi,U)");
         dhUdt_a -= (dhUdt_a & gHat)*gHat;
         
+        Info << "Second implicit non-linear advection" << endl;
         // Second implicit RK stage
         for(int its = 0; its < num.nItsU2; its++)
         {
             fvVectorMatrix UEqn
             (
-                1/dt* (fvm::Sp(h,U_prime) + h*U - h*U.oldTime()) //1/dt * (fvm::Sp(h,U) - h*U.oldTime())
+                1/dt* (fvm::Sp(h,U) - h*U.oldTime())
               + 2./3.* dhUdt_a
-              + 1./3.*fvc::div(phi, U)
-              + 2./3.*fvm::div(phi, U_prime)
+              - 1./3.*fvc::div(phi, U)
+              + 2./3.*fvm::div(phi, U)
               - 1./3.*(fvc::div(phi, U)& gHat)*gHat // outer velocity correction
-              - 2./3.*(fvc::div(phi, U_prime) & gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
-            U += U_prime;
+            //U += U_prime;
             phi = fvc::flux(h*U);
         };
         
@@ -161,16 +161,15 @@ int main(int argc, char *argv[])
             hf = fvc::interpolate(h);
             fvScalarMatrix hEqn
             (
-                1/dt* (fvm::Sp(1,h_prime) + h - h.oldTime()) //1/dt * (fvm::Sp(1,h) - h.oldTime())
-              + 0.5*fvc::div(phi)
-              + 0.5*fvm::div(linearInterpolate(U) & mesh.Sf(),h_prime,"div(phi,h)")
-              - 0.25*fvc::laplacian(dt*magg*hf, h)
-              - 0.25*fvm::laplacian(dt*magg*hf, h_prime)
-              - 0.25*fvm::div(dt*magg*fvc::snGrad(h)*mesh.magSf(), h_prime,"div(phi,h)")
+                1/dt* (fvm::Sp(1,h)- h.oldTime())
+              + 0.5*fvm::div(linearInterpolate(U) & mesh.Sf(),h,"div(phi,h)")
+              + 0.25*fvc::laplacian(dt*magg*hf, h)
+              - 0.25*fvm::laplacian(dt*magg*hf, h)
+              - 0.25*fvm::div(dt*magg*fvc::snGrad(h)*mesh.magSf(), h,"div(phi,h)")
               - 0.25*fvc::laplacian(dt*magg*hf, h0)
             );
             hEqn.solve();
-            h += h_prime;
+            //h += h_prime;
             //h_prime = 0;
         };
         

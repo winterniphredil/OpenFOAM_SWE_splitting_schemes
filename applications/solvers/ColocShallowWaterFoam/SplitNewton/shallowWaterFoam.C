@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     #include "createMesh.H"
     #include "numericalParameters.H"
     #define dt runTime.deltaT()
+    #define gamma num.gamma
     #include "readEarthProperties.H"
     #include "createFields.H"
     
@@ -112,13 +113,12 @@ int main(int argc, char *argv[])
         {
             fvVectorMatrix UEqn
             (
-                1/dt* (fvm::Sp(h,U) - h*U.oldTime())
-              - 0.25*fvc::div(phi, U)
-              + 0.5*fvm::div(phi, U)
-              - 0.25*(fvc::div(phi, U) & gHat)*gHat // outer velocity correction
+                1/dt * (fvm::Sp(h/gamma,U) + (1-1/gamma)*h*U - h*U.oldTime())
+              + 0.25 * (1-2/gamma) * fvc::div(phi, U)
+              + 0.5  * (1/gamma) * fvm::div(phi, U)
+              - 0.25 * (1-2/gamma) * (fvc::div(phi, U) & gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
-            //U += U_prime;
             phi = fvc::flux(h*U);
         };
         
@@ -131,14 +131,13 @@ int main(int argc, char *argv[])
         {
             fvVectorMatrix UEqn
             (
-                1/dt* (fvm::Sp(h,U) - h*U.oldTime())
-              + 2./3.* dhUdt_a
-              - 1./3.*fvc::div(phi, U)
-              + 2./3.*fvm::div(phi, U)
-              - 1./3.*(fvc::div(phi, U)& gHat)*gHat // outer velocity correction
+                1/dt * (fvm::Sp(h/gamma,U) + (1-1/gamma)*h*U - h*U.oldTime())
+              + 2./3. * dhUdt_a
+              + 1./3. * (1-2/gamma) * fvc::div(phi, U)
+              + 2./3. * (1/gamma) * fvm::div(phi, U)
+              - 1./3. * (1-2/gamma) * (fvc::div(phi, U)& gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
-            //U += U_prime;
             phi = fvc::flux(h*U);
         };
         
@@ -156,21 +155,23 @@ int main(int argc, char *argv[])
         
         // Final gravity (implicit), with non-linear iterations
         
+        
         for(int its = 0; its < num.nItsh; its++)
         {
             hf = fvc::interpolate(h);
+            phi = fvc::flux(h*U);
             fvScalarMatrix hEqn
             (
-                1/dt* (fvm::Sp(1,h)- h.oldTime())
-              + 0.5*fvm::div(linearInterpolate(U) & mesh.Sf(),h,"div(phi,h)")
-              + 0.25*fvc::laplacian(dt*magg*hf, h)
-              - 0.25*fvm::laplacian(dt*magg*hf, h)
-              - 0.25*fvm::div(dt*magg*fvc::snGrad(h)*mesh.magSf(), h,"div(phi,h)")
-              - 0.25*fvc::laplacian(dt*magg*hf, h0)
+                1/dt* (fvm::Sp(1/gamma,h) + (1-1/gamma)*h - h.oldTime())
+              + 0.5 * (1-1/gamma) * fvc::div(phi)
+              + 0.5 * (1/gamma) * fvm::div(linearInterpolate(U) & mesh.Sf(),h,"div(phi,h)")
+              - 0.25 * (1-1/gamma) * fvc::laplacian(dt*magg*hf, h)
+              + 0.25 * (1/gamma) * fvc::div(dt*magg*fvc::snGrad(h)*mesh.magSf(), h,"div(phi,h)")
+              - 0.25 * (1/gamma) * fvm::laplacian(dt*magg*hf, h)
+              - 0.25 * (1/gamma) * fvm::div(dt*magg*fvc::snGrad(h)*mesh.magSf(), h,"div(phi,h)")
+              - 0.25 * fvc::laplacian(dt*magg*hf, h0)
             );
             hEqn.solve();
-            //h += h_prime;
-            //h_prime = 0;
         };
         
         ghGradh = fvc::reconstruct(magg*hf*fvc::snGrad(h+h0)*mesh.magSf());

@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     #include "createMesh.H"
     #include "numericalParameters.H"
     #define dt runTime.deltaT()
+    #define gamma num.gamma
     #include "readEarthProperties.H"
     #include "createFields.H"
     
@@ -118,7 +119,7 @@ int main(int argc, char *argv[])
               //- 0.5*(fvc::div(phi, U_prime) & gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
-            U += U_prime;
+            U += gamma * U_prime;
             phi = fvc::flux(h*U);
         };
         
@@ -138,7 +139,7 @@ int main(int argc, char *argv[])
               //- 2./3.*(fvc::div(phi, U_prime) & gHat)*gHat // outer velocity correction
             );
             UEqn.solve();
-            U += U_prime;
+            U += gamma * U_prime;
             phi = fvc::flux(h*U);
         };
         
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
               - 0.25*fvc::laplacian(dt*magg*hf, h0)
             );
             hEqn.solve();
-            h += h_prime;
+            h += gamma * h_prime;
         };
         
         ghGradh = fvc::reconstruct(magg*hf*fvc::snGrad(h+h0)*mesh.magSf());
